@@ -48,7 +48,7 @@ const get_option = async (db) => {
     console.log("*********************************");
     for (let i=0; i<rows.length; ++i) {
         let row = rows[i];
-        console.log(`${i+1} => Service: ${row.service_name} ID: ${row.account_id}`);
+        console.log(`${i+1} => Service: ${row.service_name},   ID: ${row.account_id}`);
     }
     console.log("***********************************\n");
     let idx = await it.next();
@@ -104,11 +104,48 @@ const sto_option = async (db) => {
     await db.run(query).catch(err => {console.error(err);});
 }
 
+const del_option = async (db) => {
+    let query = `SELECT * FROM Vault ORDER BY service_name`;
+    let rows = await db.all(query);
+    if (rows.length === 0) { // if not found, back to option
+        console.log(`No vaults were found.`);
+        return;
+    }
+    console.log("*********************************");
+    for (let i=0; i<rows.length; ++i) {
+        let row = rows[i];
+        console.log(`${i+1} => Service: ${row.service_name},   ID: ${row.account_id}`);
+    }
+    console.log("***********************************\n");
+    console.log("Which vault do you want to delete?")
+    let idx = await it.next();
+    try {
+        idx = idx.value;
+        idx--;
+        console.log("Enter your master password");
+        let master_pw = await it.next();
+        master_pw = master_pw.value;
+        if (master_pw === process.env.MASTER_PW) {
+            console.log(`Do you really want to delete ${rows[idx].service_name}, ${rows[idx].account_id}? (y/n)`);
+            let yes_no = await it.next();
+            yes_no = yes_no.value;
+            if (yes_no.toLowerCase() === 'y')  {
+                let query = `DELETE FROM Vault WHERE service_name="${rows[idx].service_name}" AND account_id="${rows[idx].account_id}"`
+                await db.run(query);
+                console.log("Deleted");
+            }
+        }
+        return;
+    } catch (e) {
+        return;
+    }
+}
 
 const run = async (db, option) => {
     if (option === 'get') await get_option(db);
     if (option === 'gen') await gen_option(db);
     if (option === 'sto') await sto_option(db);
+    if (option === 'del') await del_option(db);
 }
 
 
@@ -122,6 +159,7 @@ const main = async () => {
         console.log("get : Get Password");
         console.log("sto : Store Password");
         console.log("gen : Generate New Password");
+        console.log("del : Delete Password");
         console.log("q   : Quit");
         console.log("***********************************");
         let option = await it.next();
