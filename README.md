@@ -12,10 +12,6 @@ Alternatively, if you have your own password you can also store it as it is.
 3. Run `npm install`
 4. Run `node app.js`
 
-### TODOs
-- Password encryption with RSA keys
-- 2FA
-- Deploy to a online server (really necessary?)
 
 ## ENABLE TWO FACTOR AUTHENTICATION (2FA)
 It is a highly effective security measure. Once you enable 2FA, you will have to enter a one-time password along with your normal password.
@@ -34,6 +30,10 @@ It is a highly effective security measure. Once you enable 2FA, you will have to
 - Downlaod either Microsoft Authenticator or Google Authenticator on your smartphone
 - Scan the QR code in your terminal
 4. Set Environmental variables
-- Set `TWO_FACTOR_SECRET` to be the ascii value you got in step 2
-- Set `USE_2FA=true`
 5. You are all set! From the next time you run `node app.js`, you are going to be prompted to enter 2FA.
+
+### TODOs
+- Master password encryption with sha-512
+- Passwords encryption with RSA keys
+- Deploy to a online server (really necessary?)
+- Require pw twice when they first create it

@@ -1,53 +1,43 @@
-const rl = require('readline').createInterface({ input: process.stdin, output: process.stdout });
+const rl = require('readline').createInterface({ input: process.stdin, output: process.stdout, terminal: false});
 const it = rl[Symbol.asyncIterator]();
-const clipboardy = require('clipboardy');
 const speakeasy = require('speakeasy');
-const qrcode = require('qrcode-terminal');
-const { verify } = require('crypto');
+const clipboardy = require("clipboardy");
+// const { verify } = require('crypto');
 const Database = require('sqlite-async');
-const { generate_password } = require('./utils');
-require('dotenv').config();
+const { generate_password, verify_user, verify_master_pw } = require('./utils');
 
 const init = async () => {
-    const db = await Database.open("vault.db").catch(e=>{console.error(e)});
+    const db = await Database.open("vault.db").catch(e => { console.error(e) });
     try {
-      let query = `CREATE TABLE Vault (
+        let query = `CREATE TABLE Vault (
           service_name VARCHAR(255) NOT NULL,
           account_id VARCHAR(255) NOT NULL,
           password VARCHAR(255) NOT NULL,
           note VARCHAR(1023),
           PRIMARY KEY (service_name, account_id)
         );`;
-      await db.run(query);
-      console.log("\nWelcome! Your vault has been created!");
-      console.log("\nCreate master password! You are going to need this every time you login.")
-      let pw = await it.next();
-      pw = pw.value;
-      query = `INSERT INTO Vault (service_name, account_id, password) VALUES ("vault", "admin", "${pw}")`;
-      await db.run(query);
-      console.log("Master password has been created!")
+        await db.run(query);
+        console.log("\nWelcome! Your vault has been created!");
+        console.log("\nCreate master password! You are going to need this every time you login.")
+        console.log("Password:");
+        let pw = await it.next();
+        pw = pw.value;
+        query = `INSERT INTO Vault (service_name, account_id, password) VALUES ("vault", "admin", "${pw}")`;
+        await db.run(query);
+        console.log("Master password has been created!")
     } catch (e) {
-        console.log("Enter the master password: ");
-        let master_pw = await it.next();
-        let query = `SELECT * FROM Vault WHERE service_name="vault" AND account_id="admin"`;
-        let admin_info = await db.get(query);
-        let MASTER_PW = admin_info.password;
-        while (master_pw.value != MASTER_PW) {
-            if (master_pw.value === "q") process.exit(1);
-            console.log("Enter the master password: ");
-            master_pw = await it.next();
-        }
-        if (master_pw.value !== MASTER_PW) {
-            process.exit(1);
-        }
+        await verify_user(db, it);
         let verified = false;
-        if (process.env.USE_2FA || false) {
+        let row = await db.get(`SELECT * FROM Vault WHERE service_name="vault" AND account_id="2FA"`);
+        let two_factor_enabled = row !== undefined;
+        if (two_factor_enabled) {
+            let secret = row.password;
             do {
                 console.log("Enter 2FA: ");
                 let two_factor = await it.next();
                 two_factor = two_factor.value;
                 verified = speakeasy.totp.verify({
-                    secret: process.env.TWO_FACTOR_SECRET,
+                    secret: secret,
                     encoding: "ascii",
                     token: two_factor,
                 });
@@ -120,7 +110,6 @@ const sto_option = async (db) => {
     password = password.value;
     let query = `SELECT * FROM Vault WHERE service_name="${service_name}" AND account_id="${account_id}"`;
     let row = await db.get(query, (err) => { console.error(err); });
-    console.log(row);
     if (row === undefined) query = `INSERT INTO Vault (service_name, account_id, password) VALUES("${service_name}", "${account_id}", "${password}")`;
     else query = `UPDATE Vault SET password="${password}" WHERE service_name="${service_name}" AND account_id="${account_id}"`;
     await db.run(query).catch(err => {console.error(err);});
@@ -144,10 +133,15 @@ const del_option = async (db) => {
     try {
         idx = idx.value;
         idx--;
+        let {service_name, account_id} = rows[idx];
+        if (service_name === 'vault' && (account_id === 'admin' || account_id === '2FA')) {
+            console.log("You cannot delete admin info");
+            return;
+        }
         console.log("Enter your master password");
         let master_pw = await it.next();
         master_pw = master_pw.value;
-        if (master_pw === process.env.MASTER_PW) {
+        if (verify_master_pw(db, master_pw)) {
             console.log(`Do you really want to delete ${rows[idx].service_name}, ${rows[idx].account_id}? (y/n)`);
             let yes_no = await it.next();
             yes_no = yes_no.value;
@@ -174,7 +168,6 @@ const run = async (db, option) => {
 const main = async () => {
     // Master Login
     const db = await init();
-
     while (1) {
         console.log("\n***********************************");
         console.log("get : Get Password");
