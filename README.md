@@ -28,8 +28,7 @@ It is a highly effective security measure. Once you enable 2FA, you will have to
   }
   ```
 3. Downlaod either Microsoft Authenticator or Google Authenticator on your smartphone
-4. Scan the QR code in your terminal
-5. Set Environmental variables
+4. Scan the QR code in your terminal from the authenticator app
 6. You are all set! From the next time you run `node app.js`, you are going to be prompted to enter 2FA.
 
 ### TODOs
