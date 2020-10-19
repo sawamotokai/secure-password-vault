@@ -24,7 +24,8 @@ It is a highly effective security measure. Once you enable 2FA, you will have to
 
 ### TODOs
 - Root password encryption with sha-512
-- Passwords encryption with RSA keys
+- Passwords encryption with RSA keys (node-rsa)
 - Deploy to a online server (really necessary?)
 - Require pw twice when they first create it
 - Hide root pw when typed
+- 
