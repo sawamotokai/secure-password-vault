@@ -1,5 +1,3 @@
-# Vault
-
 This is a password management tool to generate and store robust passwords.
 You simply type a service name and an account ID and it will generate a password for you.
 Alternatively, if you have your own password you can also store it as it is.
@@ -16,9 +14,9 @@ Alternatively, if you have your own password you can also store it as it is.
 ## ENABLE TWO FACTOR AUTHENTICATION (2FA)
 It is a highly effective security measure. Once you enable 2FA, you will have to enter a one-time password along with your normal password when you login.
 ### HOW TO ENABLE 2FA
-0. Make sure that you have run `node app.js` preiously, so that database and admin password is set correctly
+0. Make sure that you have run `node app.js` preiously, so that database and admin password is set up correctly
 1. Run `node two_factor_auth.js`
-2. Downlaod either Microsoft Authenticator or Google Authenticator on your smartphone
+2. Downlaod either `Microsoft Authenticator` or `Google Authenticator` on your smartphone
 3. Scan the QR code in your terminal from the authenticator app
 4. You are all set! From the next time you run `node app.js`, you are going to be prompted to enter 2FA.
 
@@ -28,4 +26,3 @@ It is a highly effective security measure. Once you enable 2FA, you will have to
 - Deploy to a online server (really necessary?)
 - Require pw twice when they first create it
 - Hide root pw when typed
-- 
