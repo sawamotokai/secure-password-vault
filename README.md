@@ -28,3 +28,4 @@ It is a highly effective security measure. Once you enable 2FA, you will have to
 - Deploy to a online server (really necessary?)
 - Require pw twice when they first create it
 - Hide root pw when typed
+- Refactor files into directory

@@ -15,6 +15,7 @@ const main = async () => {
   }
   let secret = speakeasy.generateSecret({name: "Vault"});
   qrcode.generate(secret.otpauth_url, { small: true });
+  console.log(secret)
   console.log("******************************************************************************************************");
   console.log("* Please Scan the QR code from a mobile app such as Microsoft Authenticator or Google Authenticator! *");
   console.log("******************************************************************************************************");

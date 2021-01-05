@@ -56,8 +56,9 @@ const get_option = async (db) => {
         console.log(`No vaults were found.`);
         return;
     }
-    console.log("Which vault do you want to open?")
-    console.log("*********************************");
+    console.log("Which vault do you want to open? Choose by its index.")
+    console.log("**********************************");
+    console.log(`0 => Back to Home Menu`);
     for (let i=0; i<rows.length; ++i) {
         let row = rows[i];
         console.log(`${i+1} => Service: ${row.service_name},   ID: ${row.account_id}`);
@@ -67,10 +68,13 @@ const get_option = async (db) => {
     try {
         idx = idx.value;
         idx--;
-        console.log(`~~~~Inside the vault~~~~~`);
+        if (idx === -1) return ;
         console.log(`Service: ${rows[idx].service_name}\nID: ${rows[idx].account_id}\nPassword: ${rows[idx].password}\nNote: ${rows[idx].note?rows[idx].note: ""}`);
+        clipboardy.writeSync(rows[idx].password);
+        console.log("Password saved to the clipboard!");
         return;
     } catch (e) {
+        console.error(e);
         return;
     }
 }
@@ -84,14 +88,15 @@ const gen_option = async (db) => {
     account_id = account_id.value;
 
     let query = `SELECT * FROM Vault WHERE service_name="${service_name}" AND account_id="${account_id}"`;
-    let row = await db.get(query).catch(e => { console.error(e) });
+    let row = await db.get(query).catch(e => { console.error(e); console.log("Error in get query.")});
+    
     if (row !== undefined) {
         console.log("You already have an account with that name");
         return;
     }
     let password = generate_password();
     query = `INSERT INTO Vault (service_name, account_id, password) VALUES ("${service_name}", "${account_id}", "${password}")`;
-    await db.run(query).catch(e => { console.error(e) });
+    await db.run(query).catch(e => { console.error(e); console.log("error in insert query.");});
     console.log(`\nYour Password => ${password}`);
     clipboardy.writeSync(password);
     console.log(`Copied to the clipboard!`);
@@ -123,6 +128,7 @@ const del_option = async (db) => {
         return;
     }
     console.log("*********************************");
+    console.log(`0 => Back to Home Menu`);
     for (let i=0; i<rows.length; ++i) {
         let row = rows[i];
         console.log(`${i+1} => Service: ${row.service_name},   ID: ${row.account_id}`);
@@ -133,6 +139,7 @@ const del_option = async (db) => {
     try {
         idx = idx.value;
         idx--;
+        if (idx === -1) return ;
         let {service_name, account_id} = rows[idx];
         if (service_name === 'vault' && (account_id === 'admin' || account_id === '2FA')) {
             console.log("You cannot delete admin info");

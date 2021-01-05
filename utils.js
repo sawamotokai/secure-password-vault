@@ -5,6 +5,7 @@ module.exports.generate_password = () => {
         numbers: true,
         symbols: true,
         strict: true,
+        exclude: "\"",
     });
     return password;
 }
@@ -15,7 +16,7 @@ module.exports.verify_user = async (db, it) => {
   let query = `SELECT * FROM Vault WHERE service_name="vault" AND account_id="admin"`;
   let admin_info = await db.get(query);
   let MASTER_PW = admin_info.password;
-  while (master_pw.value != MASTER_PW) {
+  while (master_pw.value !== MASTER_PW) {
       if (master_pw.value === "q") process.exit(1);
       console.log("Enter the master password: ");
       master_pw = await it.next();
