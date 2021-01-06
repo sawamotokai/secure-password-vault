@@ -27,3 +27,11 @@ It is a highly effective security measure. Once you enable 2FA, you will have to
 - Require pw twice when they first create it
 - Hide root pw when typed
 - Refactor files into directory
+- PW validation for del not checking
+- add modify option
+- strip spaces in choosing menu
+- don't downcase service name when storing them
+- enable root password updation
+- add a way to export db contents
+- create a installation scirpt
+
