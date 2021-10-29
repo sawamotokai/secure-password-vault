@@ -26,7 +26,12 @@ It is a highly effective security measure. Once you enable 2FA, you will have to
 - Deploy to a online server (really necessary?)
 - Require pw twice when they first create it
 - Hide root pw when typed
-<<<<<<< HEAD
 - Refactor files into directory
-=======
->>>>>>> dcfdb5ad5a0f9044284c68899f39fe378e60cfbd
+- PW validation for del not checking
+- add modify option
+- strip spaces in choosing menu
+- don't downcase service name when storing them
+- enable root password updation
+- add a way to export db contents
+- create a installation scirpt
+
