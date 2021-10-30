@@ -1,5 +1,9 @@
 const inquirer = require('inquirer')
 inquirer.registerPrompt('search-list', require('inquirer-search-list'))
+inquirer.registerPrompt(
+  'checkbox-plus',
+  require('inquirer-checkbox-plus-prompt'),
+)
 
 module.exports.generate_password = () => {
   let generator = require('generate-password')
@@ -13,7 +17,7 @@ module.exports.generate_password = () => {
   return password
 }
 
-module.exports.verify_user = async (db, it) => {
+module.exports.verify_user = async db => {
   let pw = ''
   let query = `SELECT * FROM Vault WHERE service_name="vault" AND account_id="admin"`
   let admin_info = await db.get(query)
@@ -24,17 +28,16 @@ module.exports.verify_user = async (db, it) => {
     const answer = await this.promptAsync([
       {
         name: 'pw',
-        message: 'What is your password?',
+        message: 'What is your master password?',
         type: 'password',
         mask: true,
       },
     ])
     pw = answer.pw
-    if (pw === MASTER_PW) return
+    if (pw === MASTER_PW) return true
     trial++
   }
-  console.log('User not verified. Exiting...')
-  process.exit(1)
+  return false
 }
 
 module.exports.verify_master_pw = async (db, master_pw) => {

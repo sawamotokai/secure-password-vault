@@ -130,6 +130,7 @@ const gen_option = async db => {
 }
 
 const sto_option = async db => {
+  console.clear()
   let answer = await promptAsync([
     {
       name: 'service_name',
@@ -175,54 +176,72 @@ const del_option = async db => {
   let rows = await db.all(query)
   if (rows.length === 0) {
     // if not found, back to option
-    console.log(`No vaults were found.`)
+    console.log(`No records were found.`)
     return
   }
-  console.log('*********************************')
-  console.log(`0 => Back to Home Menu`)
-  for (let i = 0; i < rows.length; ++i) {
-    let row = rows[i]
-    console.log(
-      `${i + 1} => Service: ${row.service_name},   ID: ${row.account_id}`,
-    )
-  }
-  console.log('***********************************\n')
-  console.log('Which vault do you want to delete?')
-  let idx = await it.next()
+  console.log(rows)
+  let answer = await promptAsync([
+    {
+      type: 'checkbox-plus',
+      name: 'indices',
+      message: 'Which passwords do you want to delete?',
+      pageSize: 10,
+      searchable: true,
+      source: (answersSoFar, input) => {
+        input = input || ''
+        return new Promise(function (resolve) {
+          const data = rows.map((row, i) => ({
+            name: `Service: ${row.service_name},   ID: ${row.account_id}`,
+            value: i,
+          }))
+          resolve(data)
+        })
+      },
+    },
+  ])
+  const { indices } = answer
+  if (indices.length === 0) return
   try {
-    idx = idx.value
-    idx--
-    if (idx === -1) return
-    let { service_name, account_id } = rows[idx]
-    if (
-      service_name === 'vault' &&
-      (account_id === 'admin' || account_id === '2FA')
-    ) {
-      console.log('You cannot delete admin info')
-      return
-    }
-    console.log('Enter your master password')
-    let master_pw = await it.next()
-    master_pw = master_pw.value
-    if (verify_master_pw(db, master_pw)) {
-      console.log(
-        `Do you really want to delete ${rows[idx].service_name}, ${rows[idx].account_id}? (y/n)`,
-      )
-      let yes_no = await it.next()
-      yes_no = yes_no.value
-      if (yes_no.toLowerCase() === 'y') {
-        let query = `DELETE FROM Vault WHERE service_name="${rows[idx].service_name}" AND account_id="${rows[idx].account_id}"`
-        await db.run(query)
-        console.log('Deleted')
+    let conditions = indices.map(
+      idx =>
+        `(service_name="${rows[idx].service_name}" AND account_id="${rows[idx].account_id}")`,
+    )
+    if (await verify_user(db)) {
+      let answer = await promptAsync([
+        {
+          name: 'yes',
+          type: 'confirm',
+          message: `Do you want to delete the selected item${
+            indices.length === 1 ? '' : 's'
+          }?`,
+        },
+      ])
+      const { yes } = answer
+      if (yes) {
+        let c = conditions.join(' OR ')
+        console.log(c)
+        let query = `DELETE FROM Vault WHERE ${c}`
+        var success = true
+        await db.run(query).catch(err => {
+          console.error(err)
+          console.log(
+            `Password${
+              indices.length === 1 ? '' : 's'
+            } not deleted due to an error.`,
+          )
+          success = false
+        })
+        if (success)
+          console.log(`Password${indices.length === 1 ? '' : 's'} deleted!`)
       }
     }
-    return
   } catch (e) {
-    return
+    console.error(e)
   }
 }
 
 const run = async (db, action) => {
+  console.clear()
   switch (action) {
     case 0:
       quit(db)
@@ -245,6 +264,7 @@ const main = async () => {
   // Master Login
   const db = await init()
   while (1) {
+    console.clear()
     let answer = await promptAsync([
       {
         type: 'list',
