@@ -1,4 +1,5 @@
 const inquirer = require('inquirer')
+const chalk = require('chalk')
 inquirer.registerPrompt('search-list', require('inquirer-search-list'))
 inquirer.registerPrompt(
   'checkbox-plus',
@@ -51,6 +52,21 @@ module.exports.promptAsync = ([question]) =>
   new Promise((resolve, reject) => {
     inquirer
       .prompt(question)
-      .then(answer => resolve(answer))
+      .then(answer => {
+        console.clear()
+        return resolve(answer)
+      })
       .catch(err => reject(err))
   })
+
+module.exports.successMsg = msg => {
+  console.log(chalk.inverse.green(msg))
+}
+
+module.exports.infoMsg = msg => {
+  console.log(chalk.bgBlue(msg))
+}
+
+module.exports.dangerMsg = msg => {
+  console.log(chalk.bgRed(msg))
+}

@@ -12,9 +12,13 @@ const {
   promptAsync,
   generate_password,
   verify_user,
-  verify_master_pw,
+  successMsg,
+  infoMsg,
+  dangerMsg,
 } = require('./utils')
-const { exit } = require('process')
+const fuzzy = require('fuzzy')
+const chalk = require('chalk')
+const two_factor_enabled = process.env. false
 
 const init = async () => {
   const db = await Database.open('vault.db').catch(e => {
@@ -29,30 +33,39 @@ const init = async () => {
           PRIMARY KEY (service_name, account_id)
         );`
     await db.run(query)
-    console.log('\nWelcome! Your vault has been created!')
-    console.log(
+    successMsg('\nWelcome! Your vault has been created!')
+    infoMsg(
       '\nCreate master password! You are going to need this every time you login.',
     )
-    console.log('Password:')
-    let pw = await it.next()
-    pw = pw.value
+    const answer = await promptAsync([
+      {
+        name: 'pw',
+        type: 'input',
+        message: 'Password:',
+      },
+    ])
+    const { pw } = answer
     query = `INSERT INTO Vault (service_name, account_id, password) VALUES ("vault", "admin", "${pw}")`
     await db.run(query)
-    console.log('Master password has been created!')
+    successMsg('Master password has been created!')
   } catch (e) {
     await verify_user(db, it)
     let verified = false
     let row = await db.get(
       `SELECT * FROM Vault WHERE service_name="vault" AND account_id="2FA"`,
     )
-    let two_factor_enabled = false
     // let two_factor_enabled = row !== undefined;
     if (two_factor_enabled) {
       let secret = row.password
       do {
-        console.log('Enter 2FA: ')
-        let two_factor = await it.next()
-        two_factor = two_factor.value
+        const answer = await promptAsync([
+          {
+            name: 'two_factor',
+            type: 'input',
+            message: 'Enter 2FA:',
+          },
+        ])
+        const { two_factor } = answer
         verified = speakeasy.totp.verify({
           secret: secret,
           encoding: 'ascii',
@@ -79,7 +92,6 @@ const get_option = async db => {
       message: 'Which vault do you want to open?',
       name: 'idx',
       choices: [
-        { name: 'Back to Home Menu', value: -1 },
         ...rows.map((row, i) => ({
           name: `Service: ${row.service_name}, ID: ${row.account_id}`,
           value: i,
@@ -89,9 +101,8 @@ const get_option = async db => {
   ])
   let idx = await answer.idx
   try {
-    if (idx === -1) return
     clipboardy.writeSync(rows[idx].password)
-    console.log('Password saved to the clipboard!')
+    infoMsg('Password saved to the clipboard!')
     return
   } catch (e) {
     console.error(e)
@@ -100,37 +111,42 @@ const get_option = async db => {
 }
 
 const gen_option = async db => {
-  console.log('What is the name of the service?')
-  let service_name = await it.next()
-  service_name = service_name.value.toLowerCase()
-  console.log('What is your account ID?')
-  let account_id = await it.next()
-  account_id = account_id.value
-
+  let answer = await promptAsync([
+    {
+      name: 'service_name',
+      message: 'What is the name of the service?',
+      type: 'input',
+    },
+  ])
+  const service_name = answer.service_name.toUpperCase()
+  answer = await promptAsync([
+    {
+      name: 'account_id',
+      message: 'What is your account ID?',
+      type: 'input',
+    },
+  ])
+  const { account_id } = answer
   let query = `SELECT * FROM Vault WHERE service_name="${service_name}" AND account_id="${account_id}"`
   let row = await db.get(query).catch(e => {
     console.error(e)
-    console.log('Error in get query.')
+    dangerMsg('Error in get query.')
   })
-
   if (row !== undefined) {
-    console.log('You already have an account with that name')
+    dangerMsg('You already have an account with that name')
     return
   }
-  let password = generate_password()
+  const password = generate_password()
   query = `INSERT INTO Vault (service_name, account_id, password) VALUES ("${service_name}", "${account_id}", "${password}")`
   await db.run(query).catch(e => {
     console.error(e)
-    console.log('error in insert query.')
+    dangerMsg('error in insert query.')
   })
-  console.log(`\nYour Password => ${password}`)
+  infoMsg(`\nYour Password: ${password}\ncopied to the clipboard!`)
   clipboardy.writeSync(password)
-  console.log(`Copied to the clipboard!`)
-  return
 }
 
 const sto_option = async db => {
-  console.clear()
   let answer = await promptAsync([
     {
       name: 'service_name',
@@ -167,8 +183,7 @@ const sto_option = async db => {
     console.error(err)
     quit(db)
   })
-  // TODO: use chalk here
-  console.log('Your password has been saved!')
+  successMsg('Your password has been saved!')
 }
 
 const del_option = async db => {
@@ -176,10 +191,13 @@ const del_option = async db => {
   let rows = await db.all(query)
   if (rows.length === 0) {
     // if not found, back to option
-    console.log(`No records were found.`)
+    dangerMsg(`No records were found.`)
     return
   }
-  console.log(rows)
+  const data = rows.map((row, i) => ({
+    name: `Service: ${row.service_name},   ID: ${row.account_id}`,
+    value: i,
+  }))
   let answer = await promptAsync([
     {
       type: 'checkbox-plus',
@@ -189,12 +207,14 @@ const del_option = async db => {
       searchable: true,
       source: (answersSoFar, input) => {
         input = input || ''
-        return new Promise(function (resolve) {
-          const data = rows.map((row, i) => ({
-            name: `Service: ${row.service_name},   ID: ${row.account_id}`,
-            value: i,
-          }))
-          resolve(data)
+        return new Promise(resolve => {
+          const fuzzyResult = fuzzy.filter(input, data, {
+            extract: el => el.name,
+          })
+          const ret = fuzzyResult.map(element => {
+            return element.original
+          })
+          resolve(ret)
         })
       },
     },
@@ -219,12 +239,11 @@ const del_option = async db => {
       const { yes } = answer
       if (yes) {
         let c = conditions.join(' OR ')
-        console.log(c)
         let query = `DELETE FROM Vault WHERE ${c}`
         var success = true
         await db.run(query).catch(err => {
           console.error(err)
-          console.log(
+          dangerMsg(
             `Password${
               indices.length === 1 ? '' : 's'
             } not deleted due to an error.`,
@@ -232,7 +251,7 @@ const del_option = async db => {
           success = false
         })
         if (success)
-          console.log(`Password${indices.length === 1 ? '' : 's'} deleted!`)
+          dangerMsg(`Password${indices.length === 1 ? '' : 's'} deleted!`)
       }
     }
   } catch (e) {
@@ -272,23 +291,23 @@ const main = async () => {
         message: 'What do you want to do?',
         choices: [
           {
-            name: 'Show Password',
+            name: chalk.blue`Show Password`,
             value: 1,
           },
           {
-            name: 'Store Password',
+            name: chalk.green`Store Password`,
             value: 2,
           },
           {
-            name: 'Generate Password',
+            name: chalk.yellow`Generate Password`,
             value: 3,
           },
           {
-            name: 'Delete Password',
+            name: chalk.red`Delete Password`,
             value: 4,
           },
           {
-            name: 'Quit',
+            name: `Quit`,
             value: 0,
           },
         ],
