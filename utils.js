@@ -60,13 +60,13 @@ module.exports.promptAsync = ([question]) =>
   })
 
 module.exports.successMsg = msg => {
-  console.log(chalk.inverse.green(msg))
+  console.log(chalk.greenBright(msg))
 }
 
 module.exports.infoMsg = msg => {
-  console.log(chalk.bgBlue(msg))
+  console.log(chalk.cyan(msg))
 }
 
 module.exports.dangerMsg = msg => {
-  console.log(chalk.bgRed(msg))
+  console.log(chalk.red(msg))
 }

@@ -1,12 +1,5 @@
-const rl = require('readline').createInterface({
-  input: process.stdin,
-  output: process.stdout,
-  terminal: false,
-})
-const it = rl[Symbol.asyncIterator]()
 const speakeasy = require('speakeasy')
 const clipboardy = require('clipboardy')
-// const { verify } = require('crypto');
 const Database = require('sqlite-async')
 const {
   promptAsync,
@@ -18,7 +11,11 @@ const {
 } = require('./utils')
 const fuzzy = require('fuzzy')
 const chalk = require('chalk')
-const two_factor_enabled = process.env. false
+const two_factor_enabled = process.env.ENABLE_2FA || false
+// const inquirer = require('inquirer')
+// const ui = new inquirer.ui.BottomBar()
+// console.log(ui)
+// outputStream.pipe(ui.log)
 
 const init = async () => {
   const db = await Database.open('vault.db').catch(e => {
@@ -49,7 +46,7 @@ const init = async () => {
     await db.run(query)
     successMsg('Master password has been created!')
   } catch (e) {
-    await verify_user(db, it)
+    await verify_user(db)
     let verified = false
     let row = await db.get(
       `SELECT * FROM Vault WHERE service_name="vault" AND account_id="2FA"`,
@@ -142,7 +139,12 @@ const gen_option = async db => {
     console.error(e)
     dangerMsg('error in insert query.')
   })
-  infoMsg(`\nYour Password: ${password}\ncopied to the clipboard!`)
+  successMsg('Password created!')
+  infoMsg(
+    `\nYour new password: ${chalk.italic(
+      password,
+    )} was copied to the clipboard!`,
+  )
   clipboardy.writeSync(password)
 }
 
@@ -175,10 +177,20 @@ const sto_option = async db => {
   let row = await db.get(query, err => {
     console.error(err)
   })
-  query =
-    row === undefined
-      ? `INSERT INTO Vault (service_name, account_id, password) VALUES("${service_name}", "${account_id}", "${password}")`
-      : `UPDATE Vault SET password="${password}" WHERE service_name="${service_name}" AND account_id="${account_id}"`
+  query = `INSERT INTO Vault (service_name, account_id, password) VALUES("${service_name}", "${account_id}", "${password}")`
+  if (row === undefined) {
+    const answer = await promptAsync([
+      {
+        name: 'yes',
+        message:
+          'You have a record for that service with the same account id. Do you want to overwrite the record?',
+        type: 'confirm',
+      },
+    ])
+    const { yes } = answer
+    if (!yes) return
+    query = `UPDATE Vault SET password="${password}" WHERE service_name="${service_name}" AND account_id="${account_id}"`
+  }
   await db.run(query).catch(err => {
     console.error(err)
     quit(db)
@@ -195,7 +207,7 @@ const del_option = async db => {
     return
   }
   const data = rows.map((row, i) => ({
-    name: `Service: ${row.service_name},   ID: ${row.account_id}`,
+    name: `Service: ${row.service_name}\t\t\t\tID: ${row.account_id}`,
     value: i,
   }))
   let answer = await promptAsync([
@@ -265,15 +277,19 @@ const run = async (db, action) => {
     case 0:
       quit(db)
     case 1:
+      //   ui.log.write(chalk.bgBlue`SHOW`)
       await get_option(db)
       break
     case 2:
+      //   ui.log.write(chalk.bgGreen`STORE`)
       await sto_option(db)
       break
     case 3:
+      //   ui.log.write(chalk.bgYellow`GENERATE`)
       await gen_option(db)
       break
     case 4:
+      //   ui.log.write(chalk.bgRed`DELETE`)
       await del_option(db)
       break
   }
