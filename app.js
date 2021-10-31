@@ -1,6 +1,15 @@
 const speakeasy = require('speakeasy')
 const clipboardy = require('clipboardy')
 const Database = require('sqlite-async')
+const chalk = require('chalk')
+const {
+  get_option_inquiries,
+  gen_option_inquiries,
+  sto_option_inquiries,
+  del_option_inquiries,
+  main_inquiries,
+  init_inquiries,
+} = require('./inquiries')
 const {
   promptAsync,
   generate_password,
@@ -9,16 +18,16 @@ const {
   infoMsg,
   dangerMsg,
 } = require('./utils')
-const fuzzy = require('fuzzy')
-const chalk = require('chalk')
-const two_factor_enabled = process.env.ENABLE_2FA || false
 // const inquirer = require('inquirer')
 // const ui = new inquirer.ui.BottomBar()
 // console.log(ui)
 // outputStream.pipe(ui.log)
 
+const two_factor_enabled = process.env.ENABLE_2FA || false
+var db
+
 const init = async () => {
-  const db = await Database.open('vault.db').catch(e => {
+  db = await Database.open('vault.db').catch(e => {
     console.error(e)
   })
   try {
@@ -34,13 +43,7 @@ const init = async () => {
     infoMsg(
       '\nCreate master password! You are going to need this every time you login.',
     )
-    const answer = await promptAsync([
-      {
-        name: 'pw',
-        type: 'input',
-        message: 'Password:',
-      },
-    ])
+    const answer = await promptAsync(init_inquiries.password)
     const { pw } = answer
     query = `INSERT INTO Vault (service_name, account_id, password) VALUES ("vault", "admin", "${pw}")`
     await db.run(query)
@@ -83,23 +86,14 @@ const get_option = async db => {
     console.log(`No vaults were found.`)
     return
   }
-  const answer = await promptAsync([
-    {
-      type: 'search-list',
-      message: 'Which vault do you want to open?',
-      name: 'idx',
-      choices: [
-        ...rows.map((row, i) => ({
-          name: `Service: ${row.service_name}, ID: ${row.account_id}`,
-          value: i,
-        })),
-      ],
-    },
-  ])
+  const answer = await promptAsync(get_option_inquiries.vault(rows))
   let idx = await answer.idx
   try {
-    clipboardy.writeSync(rows[idx].password)
-    infoMsg('Password saved to the clipboard!')
+    const password = rows[idx].password
+    clipboardy.writeSync(password)
+    infoMsg(
+      `Your password: ${chalk.italic(password)} was copied to the clipboard!`,
+    )
     return
   } catch (e) {
     console.error(e)
@@ -108,21 +102,9 @@ const get_option = async db => {
 }
 
 const gen_option = async db => {
-  let answer = await promptAsync([
-    {
-      name: 'service_name',
-      message: 'What is the name of the service?',
-      type: 'input',
-    },
-  ])
+  let answer = await promptAsync(gen_option_inquiries.srvName)
   const service_name = answer.service_name.toUpperCase()
-  answer = await promptAsync([
-    {
-      name: 'account_id',
-      message: 'What is your account ID?',
-      type: 'input',
-    },
-  ])
+  answer = await promptAsync(gen_option_inquiries.accountId)
   const { account_id } = answer
   let query = `SELECT * FROM Vault WHERE service_name="${service_name}" AND account_id="${account_id}"`
   let row = await db.get(query).catch(e => {
@@ -141,52 +123,25 @@ const gen_option = async db => {
   })
   successMsg('Password created!')
   infoMsg(
-    `\nYour new password: ${chalk.italic(
-      password,
-    )} was copied to the clipboard!`,
+    `Your new password: ${chalk.italic(password)} was copied to the clipboard!`,
   )
   clipboardy.writeSync(password)
 }
 
 const sto_option = async db => {
-  let answer = await promptAsync([
-    {
-      name: 'service_name',
-      message: 'What is the name of the service?',
-      type: 'input',
-    },
-  ])
+  let answer = await promptAsync(sto_option_inquiries.srvName)
   const { service_name } = answer
-  answer = await promptAsync([
-    {
-      name: 'account_id',
-      message: 'What is your account ID?',
-      type: 'input',
-    },
-  ])
+  answer = await promptAsync(sto_option_inquiries.accountId)
   const { account_id } = answer
-  answer = await promptAsync([
-    {
-      name: 'password',
-      message: 'What is your password?',
-      type: 'input',
-    },
-  ])
+  answer = await promptAsync(sto_option_inquiries.password)
   const { password } = answer
   let query = `SELECT * FROM Vault WHERE service_name="${service_name}" AND account_id="${account_id}"`
   let row = await db.get(query, err => {
     console.error(err)
   })
   query = `INSERT INTO Vault (service_name, account_id, password) VALUES("${service_name}", "${account_id}", "${password}")`
-  if (row === undefined) {
-    const answer = await promptAsync([
-      {
-        name: 'yes',
-        message:
-          'You have a record for that service with the same account id. Do you want to overwrite the record?',
-        type: 'confirm',
-      },
-    ])
+  if (row !== undefined) {
+    const answer = await promptAsync(sto_option_inquiries.confirm)
     const { yes } = answer
     if (!yes) return
     query = `UPDATE Vault SET password="${password}" WHERE service_name="${service_name}" AND account_id="${account_id}"`
@@ -207,30 +162,10 @@ const del_option = async db => {
     return
   }
   const data = rows.map((row, i) => ({
-    name: `Service: ${row.service_name}\t\t\t\tID: ${row.account_id}`,
+    name: `Service: ${row.service_name}\t\t\tID: ${row.account_id}`,
     value: i,
   }))
-  let answer = await promptAsync([
-    {
-      type: 'checkbox-plus',
-      name: 'indices',
-      message: 'Which passwords do you want to delete?',
-      pageSize: 10,
-      searchable: true,
-      source: (answersSoFar, input) => {
-        input = input || ''
-        return new Promise(resolve => {
-          const fuzzyResult = fuzzy.filter(input, data, {
-            extract: el => el.name,
-          })
-          const ret = fuzzyResult.map(element => {
-            return element.original
-          })
-          resolve(ret)
-        })
-      },
-    },
-  ])
+  let answer = await promptAsync(del_option_inquiries.indices(data))
   const { indices } = answer
   if (indices.length === 0) return
   try {
@@ -239,15 +174,7 @@ const del_option = async db => {
         `(service_name="${rows[idx].service_name}" AND account_id="${rows[idx].account_id}")`,
     )
     if (await verify_user(db)) {
-      let answer = await promptAsync([
-        {
-          name: 'yes',
-          type: 'confirm',
-          message: `Do you want to delete the selected item${
-            indices.length === 1 ? '' : 's'
-          }?`,
-        },
-      ])
+      let answer = await promptAsync(del_option_inquiries.confirm)
       const { yes } = answer
       if (yes) {
         let c = conditions.join(' OR ')
@@ -300,44 +227,10 @@ const main = async () => {
   const db = await init()
   while (1) {
     console.clear()
-    let answer = await promptAsync([
-      {
-        type: 'list',
-        name: 'action',
-        message: 'What do you want to do?',
-        choices: [
-          {
-            name: chalk.blue`Show Password`,
-            value: 1,
-          },
-          {
-            name: chalk.green`Store Password`,
-            value: 2,
-          },
-          {
-            name: chalk.yellow`Generate Password`,
-            value: 3,
-          },
-          {
-            name: chalk.red`Delete Password`,
-            value: 4,
-          },
-          {
-            name: `Quit`,
-            value: 0,
-          },
-        ],
-      },
-    ])
+    let answer = await promptAsync(main_inquiries.action)
     const { action } = answer
     await run(db, action)
-    answer = await promptAsync([
-      {
-        name: 'cont',
-        type: 'confirm',
-        message: 'Do you want to continue?',
-      },
-    ])
+    answer = await promptAsync(main_inquiries.confirm)
     const { cont } = answer
     if (!cont) quit(db)
   }
