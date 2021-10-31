@@ -118,7 +118,7 @@ module.exports.main_inquiries = {
           value: 4,
         },
         {
-          name: `Quit`,
+          name: chalk.bgBlack.white`Quit`,
           value: 0,
         },
       ],

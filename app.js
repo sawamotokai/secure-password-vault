@@ -92,7 +92,9 @@ const get_option = async db => {
     const password = rows[idx].password
     clipboardy.writeSync(password)
     infoMsg(
-      `Your password: ${chalk.italic(password)} was copied to the clipboard!`,
+      `Your password: ${chalk.italic(
+        password,
+      )} has been copied to the clipboard!`,
     )
     return
   } catch (e) {
@@ -123,7 +125,9 @@ const gen_option = async db => {
   })
   successMsg('Password created!')
   infoMsg(
-    `Your new password: ${chalk.italic(password)} was copied to the clipboard!`,
+    `Your new password: ${chalk.italic(
+      password,
+    )} has been copied to the clipboard!`,
   )
   clipboardy.writeSync(password)
 }
