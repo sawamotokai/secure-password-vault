@@ -16,7 +16,7 @@ Alternatively, if you have your own password you can also store it as it is.
   | `ENABLE_2FA` | boolean: Whether to use two factor authentication. | false |
 
 ## ENABLE TWO FACTOR AUTHENTICATION (2FA)
-It is a highly effective security measure. Once you enable 2FA, you will have to enter a one-time password along with your normal password when you login.
+2FA is a highly effective security measure to protect your privacy. Once you enable 2FA, you will have to enter a one-time password along with your normal passcode every time you login.
 ### HOW TO ENABLE 2FA
 0. Make sure that you have run `node app.js` previously, so that database and admin password is set up correctly
 1. Run `node two_factor_auth.js`
