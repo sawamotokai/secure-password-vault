@@ -4,13 +4,13 @@ Vault is a password management tool to generate and store robust passwords.
 You simply type a service name and an account ID and it will generate a password for you.
 Alternatively, if you have your own password you can also store it as it is.
 
-- Generate password
+- Generate password\
   ![generate passwrod](gifs/gen.gif)
-- Browse password
+- Browse password\
   ![browse passwrod](gifs/show.gif)
-- Record password
+- Record password\
   ![record passwrod](gifs/sto.gif)
-- Delete password
+- Delete password\
   ![delete passwrod](gifs/del.gif)
 
 ## HOW TO USE
