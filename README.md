@@ -16,7 +16,7 @@ Alternatively, if you have your own password you can also store it as it is.
 ## HOW TO USE
 
 1. Clone or download the repo and navigate to that directory.
-2. Setup environmet variables below if necessary (reference below)
+2. Setup environment variables below if necessary (reference below)
 3. Run `npm install`.
 4. Run `node app.js`. You are going to be asked to create the admin password.
 5. (Optional) Run `node two_factor_auth.js` to setup 2FA. See below for more details.
@@ -30,7 +30,7 @@ Alternatively, if you have your own password you can also store it as it is.
 
 ## ENABLE TWO FACTOR AUTHENTICATION (2FA)
 
-It is a highly effective security measure. Once you enable 2FA, you will have to enter a one-time password along with your normal password when you login.
+2FA is a highly effective security measure to protect your privacy. Once you enable 2FA, you will have to enter a one-time password along with your normal passcode every time you login.
 
 ### HOW TO ENABLE 2FA
 
