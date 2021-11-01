@@ -5,13 +5,13 @@ You simply type a service name and an account ID and it will generate a password
 Alternatively, if you have your own password you can also store it as it is.
 
 - Generate password
-  ![generate passwrod](gifs/vault-gen.gifs)
+  ![generate passwrod](gifs/gen.gif)
 - Browse password
-  ![browse passwrod](gifs/vault-show.gifs)
+  ![browse passwrod](gifs/show.gif)
 - Record password
-  ![record passwrod](gifs/vault-sto.gifs)
+  ![record passwrod](gifs/sto.gif)
 - Delete password
-  ![delete passwrod](gifs/vault-del.gifs)
+  ![delete passwrod](gifs/del.gif)
 
 ## HOW TO USE
 
