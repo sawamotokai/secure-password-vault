@@ -7,10 +7,12 @@ module.exports.get_option_inquiries = {
       type: 'search-list',
       message: 'Which vault do you want to open?',
       name: 'idx',
-      choices: rows.map((row, i) => ({
-        name: `Service: ${row.service_name}\t\t\t ID: ${row.account_id}`,
-        value: i,
-      })),
+      choices: rows
+        .filter(row => row.service_name !== 'vault')
+        .map((row, i) => ({
+          name: `Service: ${row.service_name}\t\t\t ID: ${row.account_id}`,
+          value: i,
+        })),
     },
   ],
 }
@@ -137,8 +139,24 @@ module.exports.init_inquiries = {
   password: [
     {
       name: 'pw',
+      type: 'password',
+      mask: true,
+      message: 'Enter your password',
+    },
+  ],
+  confirmPassword: pw => [
+    {
+      name: 'pw2',
+      mask: true,
+      type: 'password',
+      message: 'Re-enter your password',
+    },
+  ],
+  twoFactor: [
+    {
+      name: 'two_factor',
       type: 'input',
-      message: 'Password:',
+      message: 'Enter 2FA:',
     },
   ],
 }

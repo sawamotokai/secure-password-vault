@@ -32,11 +32,16 @@ module.exports.verify_user = async db => {
         message: 'What is your master password?',
         type: 'password',
         mask: true,
+        validate: input =>
+          input === MASTER_PW
+            ? true
+            : chalk.red`Master password does not match.`,
       },
     ])
     pw = answer.pw
     if (pw === MASTER_PW) return true
     trial++
+    console.log(chalk.red`Master password does not match.`)
   }
   return false
 }

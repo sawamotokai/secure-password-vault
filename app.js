@@ -27,11 +27,9 @@ const two_factor_enabled = process.env.ENABLE_2FA || false
 var db
 
 const init = async () => {
-  db = await Database.open('vault.db').catch(e => {
-    console.error(e)
-  })
+  db = await Database.open('vault.db').catch(e => console.error(e))
   try {
-    let query = `CREATE TABLE Vault (
+    let query = `CREATE TABLE IF NOT EXISTS Vault (
           service_name VARCHAR(255) NOT NULL,
           account_id VARCHAR(255) NOT NULL,
           password VARCHAR(255) NOT NULL,
@@ -39,32 +37,37 @@ const init = async () => {
           PRIMARY KEY (service_name, account_id)
         );`
     await db.run(query)
-    successMsg('\nWelcome! Your vault has been created!')
+    successMsg('Welcome!')
     infoMsg(
       '\nCreate master password! You are going to need this every time you login.',
     )
-    const answer = await promptAsync(init_inquiries.password)
-    const { pw } = answer
-    query = `INSERT INTO Vault (service_name, account_id, password) VALUES ("vault", "admin", "${pw}")`
-    await db.run(query)
-    successMsg('Master password has been created!')
-  } catch (e) {
-    await verify_user(db)
-    let verified = false
     let row = await db.get(
+      `SELECT * FROM Vault WHERE service_name="vault" AND account_id="admin"`,
+    )
+    if (row) {
+      if (!(await verify_user(db))) quit(db)
+    } else {
+      while (1) {
+        let answer = await promptAsync(init_inquiries.password)
+        var { pw } = answer
+        answer = await promptAsync(init_inquiries.confirmPassword(pw))
+        var { pw2 } = answer
+        if (pw !== pw2) console.log(chalk.red`>> Password does not match!`)
+        else break
+      }
+      query = `INSERT INTO Vault (service_name, account_id, password) VALUES ("vault", "admin", "${pw}")`
+      await db.run(query)
+      successMsg('Master password has been created!')
+    }
+
+    let verified = false
+    row = await db.get(
       `SELECT * FROM Vault WHERE service_name="vault" AND account_id="2FA"`,
     )
-    // let two_factor_enabled = row !== undefined;
-    if (two_factor_enabled) {
+    if (row.length === 0 && two_factor_enabled) {
       let secret = row.password
       do {
-        const answer = await promptAsync([
-          {
-            name: 'two_factor',
-            type: 'input',
-            message: 'Enter 2FA:',
-          },
-        ])
+        const answer = await promptAsync(init_inquiries.twoFactor)
         const { two_factor } = answer
         verified = speakeasy.totp.verify({
           secret: secret,
@@ -74,6 +77,8 @@ const init = async () => {
         if (two_factor.toLowerCase() === 'q') process.exit(1)
       } while (!verified)
     }
+  } catch (e) {
+    console.error(e)
   }
   return db
 }
@@ -165,10 +170,12 @@ const del_option = async db => {
     dangerMsg(`No records were found.`)
     return
   }
-  const data = rows.map((row, i) => ({
-    name: `Service: ${row.service_name}\t\t\tID: ${row.account_id}`,
-    value: i,
-  }))
+  const data = rows
+    .filter(row => row.service_name !== 'vault')
+    .map((row, i) => ({
+      name: `Service: ${row.service_name}\t\t\tID: ${row.account_id}`,
+      value: i,
+    }))
   let answer = await promptAsync(del_option_inquiries.indices(data))
   const { indices } = answer
   if (indices.length === 0) return
